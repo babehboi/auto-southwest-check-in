@@ -12,6 +12,9 @@ from .webdriver import WebDriver
 if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
 
+import time
+import random
+
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
 logger = get_logger(__name__)
 
@@ -74,6 +77,12 @@ class CheckInScheduler:
         }
         site = VIEW_RESERVATION_URL + confirmation_number
 
+        #Randomization of Retrieving Reservation Info
+        randomTime=random.randrange(30,600,3)
+        print(self.reservation_monitor.first_name+" "+confirmation_number+" in progress")
+        logger.debug("Waiting to retrieve reservation information "+str(randomTime)+" seconds")
+        time.sleep(randomTime)
+        
         try:
             logger.debug("Retrieving reservation information")
             response = make_request("GET", site, self.headers, info)
