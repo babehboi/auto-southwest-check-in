@@ -10,6 +10,9 @@ from .utils import FlightChangeError, make_request
 if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
 
+import time
+import random
+
 # Type alias for JSON
 JSON = Dict[str, Any]
 
@@ -27,6 +30,12 @@ class FareChecker:
         Check if the price amount is negative (in either points or USD).
         If it is, send a notification to the user about the lower fare.
         """
+        #Randomization of FareChecking
+        print(self.reservation_monitor.first_name+"'s "+flight.confirmation_number+" fare check in progress")
+        randomTime=random.randrange(30,120,3)
+        logger.debug("Waiting "+str(randomTime)+"s before checking current price")
+        time.sleep(randomTime)
+        
         logger.debug("Checking current price for flight")
         flight_price = self._get_flight_price(flight)
 
