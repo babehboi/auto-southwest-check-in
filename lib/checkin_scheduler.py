@@ -78,7 +78,7 @@ class CheckInScheduler:
         }
         site = VIEW_RESERVATION_URL + confirmation_number
         
-        #Randomization of Retrieving Reservation Information
+        #Randomization of Retrieving Reservation Information 30s to 5m
         randomTime=random.randrange(30,600,3)
         print(self.reservation_monitor.first_name+" "+confirmation_number+" in progress")
         logger.debug("Waiting to retrieve reservation information "+str(randomTime)+" seconds")
