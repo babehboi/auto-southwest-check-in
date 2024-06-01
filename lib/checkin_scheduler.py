@@ -9,6 +9,9 @@ from .log import get_logger
 from .utils import RequestError, get_current_time, make_request
 from .webdriver import WebDriver
 
+import random
+import time
+
 if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
 
@@ -74,7 +77,13 @@ class CheckInScheduler:
             "last-name": self.reservation_monitor.last_name,
         }
         site = VIEW_RESERVATION_URL + confirmation_number
-
+        
+        #Randomization of Retrieving Reservation Information
+        randomTime=random.randrange(30,600,3)
+        print(self.reservation_monitor.first_name+" "+confirmation_number+" in progress")
+        logger.debug("Waiting to retrieve reservation information "+str(randomTime)+" seconds")
+        time.sleep(randomTime)
+        
         try:
             logger.debug("Retrieving reservation information")
             response = make_request("GET", site, self.headers, info)
