@@ -1,8 +1,11 @@
 import json
+import socket
 import time
+from datetime import datetime, timezone
 from enum import IntEnum
 from typing import Any, Dict, Union
 
+import ntplib
 import requests
 
 from .log import get_logger
@@ -11,20 +14,26 @@ from .log import get_logger
 JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
+NTP_SERVER = "us.pool.ntp.org"
 logger = get_logger(__name__)
 
 RESERVATION_NOT_FOUND_CODE = 400620389
 
 
 def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
+    """
+    Makes a request to the Southwest servers. For increased reliability, the request is performed
+    multiple times on failure. This request retrying is also necessary for check-ins, as check-in
+    requests are started five seconds ahead of the actual check-in time (in case the Southwest
+    server is not in sync with our NTP server or local computer).
+    """
     # Ensure the URL is not malformed
     site = site.replace("//", "/").lstrip("/")
     url = BASE_URL + site
 
-    # In the case that your server and the Southwest server aren't in sync,
-    # this requests multiple times for a better chance at success when checking in
-    attempts = 1
-    while attempts <= max_attempts:
+    attempts = 0
+    while attempts < max_attempts:
+        attempts += 1
         if method == "POST":
             response = requests.post(url, headers=headers, json=info)
         else:
@@ -34,14 +43,15 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
             logger.debug("Successfully made request after %d attempts", attempts)
             return response.json()
 
+        # Request did not succeed
         response_body = response.content.decode()
         error = RequestError(None, response_body)
+
         if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
             # Don't keep requesting if the reservation was not found
             logger.debug("Reservation not found")
             break
 
-        attempts += 1
         time.sleep(0.5)
 
     error_msg = response.reason + " " + str(response.status_code)
@@ -49,6 +59,26 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
 
     logger.debug("Response body: %s", response_body)
     raise RequestError(error_msg, response_body)
+
+
+def get_current_time() -> datetime:
+    """
+    Fetch the current time from an NTP server. Times are sometimes off on computers running the
+    script and since check-ins rely on exact times, this ensures check-ins are done at the correct
+    time. Falls back to local time if the request to the NTP server fails.
+
+    Times are returned in UTC.
+    """
+    c = ntplib.NTPClient()
+
+    try:
+        # Set a longer timeout to make the request more reliable
+        response = c.request(NTP_SERVER, version=3, timeout=10)
+    except (socket.gaierror, ntplib.NTPException):
+        logger.debug("Error requesting time from NTP server. Using local time")
+        return datetime.now(timezone.utc).replace(tzinfo=None)
+
+    return datetime.fromtimestamp(response.tx_time, timezone.utc).replace(tzinfo=None)
 
 
 # Make a custom exception when a request fails

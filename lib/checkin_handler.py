@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from .flight import Flight
 from .log import get_logger
-from .utils import RequestError, make_request
+from .utils import RequestError, get_current_time, make_request
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -82,7 +82,7 @@ class CheckInHandler:
             pass
 
     def _wait_for_check_in(self, checkin_time: datetime) -> None:
-        current_time = datetime.utcnow()
+        current_time = get_current_time()
         if checkin_time <= current_time:
             logger.debug("Check-in time has passed. Going straight to check-in")
             return
@@ -104,7 +104,7 @@ class CheckInHandler:
 
             logger.debug("Lock released")
 
-        current_time = datetime.utcnow()
+        current_time = get_current_time()
         sleep_time = (checkin_time - current_time).total_seconds()
         logger.debug("Sleeping until check-in: %d seconds...", sleep_time)
         time.sleep(sleep_time)
@@ -125,7 +125,6 @@ class CheckInHandler:
         """
         Checks into a flight. Will catch any errors that occur during the check-in process.
         """
-        logger.debug("Attempting to check in")
         print(
             f"Checking in to flight from '{self.flight.departure_airport}' to "
             f"'{self.flight.destination_airport}' for {self.first_name} {self.last_name}\n"
@@ -148,26 +147,27 @@ class CheckInHandler:
         succeed after one attempt for non-same-day flights, but is necessary for
         same-day flights.
 
-        Since the check-in is started early, the submission will go through for the
-        previous flight, but the flight attached to this handler will not have been
-        checked in yet. Therefore, this function keeps attempting to check in until
-        both flights have checked in.
+        For same-day flights: since the check-in is started early, the submission will
+        go through for the previous flight, but the flight attached to this handler will
+        not have been checked in yet. Therefore, this function keeps attempting to check
+        in until both flights have checked in.
         """
-        logger.debug("Submitting check-in with a POST request")
+        logger.debug("Attempting to check in")
         expected_flights = 2 if self.flight.is_same_day else 1
 
         attempts = 0
         while attempts < MAX_CHECK_IN_ATTEMPTS:
+            attempts += 1
+
             reservation = self._check_in_to_flight()
             flights = reservation["checkInConfirmationPage"]["flights"]
             if len(flights) >= expected_flights:
-                logger.debug("Successfully checked in after %d attempts", attempts + 1)
+                logger.debug("Successfully checked in after %d attempts", attempts)
                 return reservation
 
             logger.debug(
                 "Same-day flight has not been checked in yet. Waiting 1 second and trying again"
             )
-            attempts += 1
             time.sleep(1)
 
         logger.debug("Same-day flight failed to check in after %d attempts", MAX_CHECK_IN_ATTEMPTS)

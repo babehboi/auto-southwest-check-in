@@ -1,6 +1,9 @@
 import json
+import socket
+from datetime import datetime, timezone
 from typing import Any
 
+import ntplib
 import pytest
 from pytest_mock import MockerFixture
 from requests_mock.mocker import Mocker as RequestMocker
@@ -73,6 +76,25 @@ def test_make_request_handles_malformed_URLs(requests_mock: RequestMocker) -> No
     mock_post = requests_mock.get(utils.BASE_URL + "test/test2", status_code=200, text="{}")
     utils.make_request("GET", "/test//test2", {}, {})
     assert mock_post.last_request.url == utils.BASE_URL + "test/test2"
+
+
+def test_get_current_time_returns_a_datetime_from_ntp_server(mocker: MockerFixture) -> None:
+    ntp_stats = ntplib.NTPStats()
+    ntp_stats.tx_timestamp = 3155673599
+    mocker.patch("ntplib.NTPClient.request", return_value=ntp_stats)
+
+    assert utils.get_current_time() == datetime(1999, 12, 31, 23, 59, 59)
+
+
+@pytest.mark.parametrize("exception", [socket.gaierror, ntplib.NTPException])
+def test_get_current_time_returns_local_datetime_on_failed_request(
+    mocker: MockerFixture, exception: Exception
+) -> None:
+    mocker.patch("ntplib.NTPClient.request", side_effect=exception)
+    mock_datetime = mocker.patch("lib.utils.datetime")
+    mock_datetime.now.return_value = datetime(1999, 12, 31, 18, 59, 59, tzinfo=timezone.utc)
+
+    assert utils.get_current_time() == datetime(1999, 12, 31, 18, 59, 59)
 
 
 @pytest.mark.parametrize(

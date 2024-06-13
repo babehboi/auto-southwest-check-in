@@ -2,6 +2,26 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+
+## 7.5 (2024-06-07)
+### New Features
+- Times are now fetched from an NTP server when possible ([#235](https://github.com/jdholtz/auto-southwest-check-in/issues/235))
+    - This mitigates issues with the time being off on computers running the script, which may cause failed check-ins
+
+### Improvements
+- Indicators were added in some log messages and the Readme for when the script may take a while while using the browser
+([#237](https://github.com/jdholtz/auto-southwest-check-in/issues/237))
+- When a lower fare notification is sent, the Southwest desktop URL will also be sent for convenience
+([#270](https://github.com/jdholtz/auto-southwest-check-in/pull/270) by [@natecodes](https://github.com/natecodes))
+
+### Bug Fixes
+- Fix some cases in which departed flights still attempt to check in ([#257](https://github.com/jdholtz/auto-southwest-check-in/issues/257))
+
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+    - [ntplib](https://pypi.org/project/ntplib/) is a now a dependency
+
+
 ## 7.4 (2024-04-14)
 ### New Features
 - A [development container](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers)
