@@ -20,12 +20,15 @@ class Flight:
     The flight time is automatically translated from the flight's local timezone to UTC.
     """
 
-    def __init__(self, flight_info: Dict[str, Any], confirmation_number: str) -> None:
+    def __init__(self, flight_info: JSON, reservation_info: JSON, confirmation_number: str) -> None:
         self.confirmation_number = confirmation_number
         self.departure_airport = flight_info["departureAirport"]["name"]
         self.destination_airport = flight_info["arrivalAirport"]["name"]
         self.flight_number = self._get_flight_number(flight_info["flights"])
         self.is_same_day = False
+
+        # Cached for use by the fare checker
+        self.reservation_info = reservation_info
 
         # Track to notify the user of filling out their passport information.
         # Southwest only fills the country's value for international flights
@@ -75,8 +78,17 @@ class Flight:
         return utc_time
 
     def _get_flight_number(self, flights: JSON) -> str:
+        """
+        Formats the flight number in the way that the fare checker expects it, which is with the
+        'WN' prefix removed and a slash separating each number with a zero-width space on either
+        side.
+        """
         flight_number = ""
         for flight in flights:
-            flight_number += flight["number"] + "\u200b/\u200b"
+            # Remove the 'WN' prefix from each flight number
+            flight_number += flight["number"].replace("WN", "", 1)
+            # Add a slash with a zero-width space on either side
+            flight_number += "\u200b/\u200b"
 
-        return flight_number.rstrip("\u200b/\u200b")
+        # Remove any slashes and zero-width spaces from the end
+        return flight_number.rstrip("/\u200b")
